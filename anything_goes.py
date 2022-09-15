@@ -2,6 +2,12 @@ import utility
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.pipeline import Pipeline
+from tqdm import tqdm
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.optimizers import SGD
+import numpy as np
+from sklearn.preprocessing import LabelEncoder
 
 # Work comes from https://nlpforhackers.io/training-pos-tagger/amp/
 
@@ -16,6 +22,51 @@ def anything():
 
     print(len(X))
 
+    # all_clfs = dec_tree(X, y)
+    # acc_score(all_clfs)
+
+    model = seq_model(X, y)
+
+def defeature(data):
+    unfeatured = []
+
+    for dict in data:
+        unfeatured.append(dict['word'])
+
+    return unfeatured
+
+
+def string_to_num(data):
+    le = LabelEncoder()
+
+    label = le.fit_transform(data)
+
+    return label
+
+
+def seq_model(x, y):
+    model = Sequential()
+    model.add(Dense(256, input_shape=(1,), activation="sigmoid"))
+    model.add(Dense(128, activation="sigmoid"))
+    model.add(Dense(10, activation="softmax"))
+    model.add(Dense(1, activation="softmax"))
+
+    x = defeature(x)
+
+    x = string_to_num(x)
+    y = string_to_num(y)
+
+    x = np.asarray(x)
+    y = np.asarray(y)
+
+    print("[INFO] training network...")
+    sgd = SGD(0.01)
+    model.compile(loss="categorical_crossentropy", optimizer=sgd, metrics=["accuracy"])
+    H = model.fit(x, y, epochs=100, batch_size=32)
+
+    return model
+
+def dec_tree(X, y):
     clf = Pipeline([
         ('vectorizer', DictVectorizer(sparse=False)),
         ('classifier', DecisionTreeClassifier(criterion='entropy')),
@@ -23,15 +74,37 @@ def anything():
 
     print("Training Started")
 
-    clf.fit(X[:25000], y[:25000])  # Use only the first 10K samples if you're running it multiple times. It takes a fair bit :)
+    # Custom work below
+    all_clfs = []
+
+    for i in tqdm(range(0, 115), desc="Training"):
+        cur_clf = clf
+        cur_clf.fit(X[(i * 31649): ((i + 1) * 31649)], y[(i * 31649): ((i + 1) * 31649)])  # Use only the first 10K samples if you're running it multiple times. It takes a fair bit :)
+
+        all_clfs.append(cur_clf)
 
     print('Training completed')
 
     X_test, y_test = transform_to_dataset(test_sentences)
 
-    print("Accuracy:", clf.score(X_test[:1000], y_test[:1000]))
+    return all_clfs
 
 
+def acc_score(all_clfs):
+    all_scores = []
+
+    for clf in all_clfs:
+        all_scores.append(clf.score(X_test[:1500], y_test[:1500]))
+
+    total_acc = 0
+
+    for score in all_scores:
+        total_acc += score
+
+    print("Accuracy:", total_acc / len(all_scores))
+
+
+# Comes from same link as above
 def features(sentence, index):
     """ sentence: [w1, w2, ...], index: the index of the word """
     return {
