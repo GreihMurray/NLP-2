@@ -1,6 +1,22 @@
 import csv
 from tqdm import tqdm
 
+
+def read_file():
+    all_data = []
+
+    with open("train.tsv", encoding="utf-8") as file:
+        f = csv.reader(file, delimiter="\t")
+
+        for line in tqdm(f, desc="Reading data..."):
+            if line[0][0:2].strip() == 'N':
+                line[0] = 'N'
+
+            all_data.append((line[0], line[1]))
+
+    return all_data
+
+
 def read_file_to_sents():
     with open("train.tsv", encoding="utf-8") as file:
         f = csv.reader(file, delimiter="\t")
@@ -18,7 +34,7 @@ def read_file_to_sents():
                 cur_sent = []
                 continue
 
-            cur_sent.append(line)
+            cur_sent.append((line[0], line[1]))
 
     return all_sents
 
